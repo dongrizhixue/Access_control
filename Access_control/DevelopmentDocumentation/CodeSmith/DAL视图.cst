@@ -1,0 +1,444 @@
+﻿<%@ CodeTemplate Language="C#" TargetLanguage="C#" Description="Generates a very simple business object." %>
+<%@ Property Name="TargetTable" Type="SchemaExplorer.ViewSchema" Category="Context" Description="TargetTable that the object is based on." %>
+<%@ Property Name="ModelsNamespace" Default="OxFFERP.Model" Type="System.String" Category="Context" Description="TargetTable that the object is based on." %>
+<%@ Property Name="DALNamespace" Default="OxFFERP.DAL" Type="System.String" Category="Context" Description="TargetTable that the object is based on." %>
+<%@ Property Name="DALClassNameSurfix" Default="Service" Type="System.String" Category="Context" Description="TargetTable that the object is based on." %>
+<%@ Assembly Name="SchemaExplorer" %>
+<%@ Assembly Name="System.Data" %>
+<%@ Import Namespace="SchemaExplorer" %>
+<%@ Import Namespace="System.Data" %>
+<%@ Import Namespace="System.Text.RegularExpressions" %>
+<% PrintHeader(); %>
+using System;
+using System.Collections.Generic;
+using System.Text;
+using System.Data;
+using System.Data.SqlClient;
+using DAL.Tool;
+using Entity;
+
+namespace <%= DALNamespace %>
+{
+	public static partial class <%= GetDALClassName() %>
+	{
+		 
+
+		 /// <summary>
+        /// 获得全部记录 尽量避免使用
+        /// </summary>       
+        public static List<<%= GetModelClassName() %>> GetAll<%= MakePlural(GetModelClassName()) %>()
+        {
+            string sqlAll = "SELECT * FROM <%= TargetTable.Name %>";
+			return Get<%= MakePlural(GetModelClassName()) %>BySql( sqlAll );
+        }  
+	 
+     
+    /// <summary>
+        /// 通过SQL语句获取记录
+        /// </summary>
+        /// <param name="safeSql">SQL语句</param>
+        public static List<<%= GetModelClassName() %>> Get<%= MakePlural(GetModelClassName()) %>BySql( string safeSql )
+        {
+            List<<%= GetModelClassName() %>> list = new List<<%= GetModelClassName() %>>();
+
+			try
+			{
+				DataTable table = DBHelper.ExecuteDataset(CommandType.Text,safeSql).Tables[0];
+				
+				foreach (DataRow row in table.Rows)
+				{
+					<%= GetModelClassName() %> <%= GetModelParamName() %> = new <%= GetModelClassName() %>();
+					
+					<% foreach(ViewColumnSchema column in TargetTable.Columns) %>
+					<% { %>
+                     <%= GetModelParamName() %>.<%= GetPropertyName(column) %> = row["<%= GetCloumnName(column.Name) %>"]==DBNull.Value?null:  (<%= GetPropertyType(column) %>)row["<%= GetCloumnName(column.Name) %>"];
+					
+					<% } %>
+					 
+					list.Add(<%= GetModelParamName() %>);
+				}
+	
+				return list;
+			}
+            catch (Exception e)
+            {
+                throw e;
+            }
+
+        }
+        
+         /// <summary>
+        /// 通过WHERE条件获取记录
+        /// </summary>
+        /// <param name="where">WHERE条件</param>
+		/// <param name="SqlParameter">参数</param>
+		 public static List<<%= GetModelClassName() %>> Get<%= MakePlural(GetModelClassName()) %>ByCondition(string where,params SqlParameter[] values)
+        {
+            List<<%= GetModelClassName() %>> list = new List<<%= GetModelClassName() %>>();
+			string  sql  = "SELECT * FROM  <%= GetModelClassName()%> WHERE  "  +  where;
+			try
+			{
+				DataTable table = DBHelper.ExecuteDataset(CommandType.Text,sql,values).Tables[0];
+				
+				foreach (DataRow row in table.Rows)
+				{
+					<%= GetModelClassName() %> <%= GetModelParamName() %> = new <%= GetModelClassName() %>();
+					
+					<% foreach(ViewColumnSchema column in TargetTable.Columns) %>
+					<% { %>
+					<%= GetModelParamName() %>.<%= GetPropertyName(column) %> =row["<%= GetCloumnName(column.Name) %>"] ==DBNull.Value?null:  (<%= GetPropertyType(column) %>)row["<%= GetCloumnName(column.Name) %>"];
+					<% } %>
+					
+					list.Add(<%= GetModelParamName() %>);
+				}
+	
+				return list;
+			}
+            catch (Exception e)
+            {
+                throw e;
+            }
+			
+        }
+        
+        /// <summary>
+        /// 通过WHERE条件获取记录单个实体记录
+        /// </summary>
+        /// <param name="where">WHERE条件</param>
+		/// <param name="SqlParameter">参数</param>
+        public static <%= GetModelClassName() %> GetEntityByCondition(string where,params SqlParameter[] values)
+        {
+            List<<%= GetModelClassName() %>> list = Get<%= MakePlural(GetModelClassName()) %>ByCondition(where,values);
+            if(list==null||list.Count==0)
+            {
+               return null;
+            }
+            else
+            {
+               return list[0];
+            }
+        }
+        
+        
+        /// <summary>
+        /// 通过WHERE条件获取记录带有默认值的单个实体记录
+        /// </summary>
+        /// <param name="where">WHERE条件</param>
+		/// <param name="SqlParameter">参数</param>
+        public static <%= GetModelClassName() %> GetDefaultEntityByCondition(string where,params SqlParameter[] values)
+        {
+            List<<%= GetModelClassName() %>> list = Get<%= MakePlural(GetModelClassName()) %>ByCondition(where,values);
+            if(list==null||list.Count==0)
+            {
+               return new <%= GetModelClassName() %>();
+            }
+            else
+            {
+               return list[0];
+            }
+        }
+    }    
+}
+<script runat="template">
+///////////////////////////////////////////////////////////////
+// CLASS NAMES by Shen Bo
+///////////////////////////////////////////////////////////////
+// UserService
+public string GetDALClassName()
+{
+	return 	GetModelClassName() + DALClassNameSurfix;
+}
+// User
+public string GetModelClassName()
+{
+	return 	GetModelClassName(TargetTable);
+}
+// user
+public string GetModelMemberVarName()
+{
+	return GetModelParamName();
+}
+// user
+public string GetModelParamName()
+{
+	return MakeCamel(GetModelClassName());
+}
+// User
+public string GetModelClassName(ViewSchema table)
+{
+	return MakePascal(table.Name);
+}
+
+  
+
+
+///////////////////////////////////////////////////////////////
+// PRIMARY KEY TYPE by Shen Bo
+///////////////////////////////////////////////////////////////
+ 
+ 
+
+///////////////////////////////////////////////////////////////
+// PRIMARY KEY NAME by Shen Bo
+///////////////////////////////////////////////////////////////
+ 
+  
+
+///////////////////////////////////////////////////////////////
+// PROPERTY TYPE by Shen Bo
+///////////////////////////////////////////////////////////////
+public string GetPropertyType(ViewColumnSchema column)
+{
+	return GetCSharpTypeFromDBFieldType(column);
+}
+public string GetMemberVarType(ViewColumnSchema column)
+{
+	return GetCSharpTypeFromDBFieldType(column);
+}
+public string GetParamType(ViewColumnSchema column)
+{
+	return GetCSharpTypeFromDBFieldType(column);
+}
+public string GetCSharpTypeFromDBFieldType(ViewColumnSchema column)
+{
+	if (GetCloumnName(column.Name).EndsWith("TypeCode")) return GetCloumnName(column.Name);
+	
+	switch (column.DataType)
+	{
+		case DbType.AnsiString: return "string";
+		case DbType.AnsiStringFixedLength: return "string";
+		case DbType.Binary: return "byte[]";
+		case DbType.Boolean: return "bool?";
+		case DbType.Byte: return "byte?";
+		case DbType.Currency: return "decimal?";
+		case DbType.Date: return "DateTime";
+		case DbType.DateTime: return "DateTime?";
+		case DbType.Decimal: return "decimal?";
+		case DbType.Double: return "double?";
+		case DbType.Guid: return "Guid";
+		case DbType.Int16: return "short?";
+		case DbType.Int32: return "int?";
+		case DbType.Int64: return "long?";
+		case DbType.Object: return "object";
+		case DbType.SByte: return "sbyte?";
+		case DbType.Single: return "float?";
+		case DbType.String: return "string";
+		case DbType.StringFixedLength: return "string";
+		case DbType.Time: return "TimeSpan";
+		case DbType.UInt16: return "ushort?";
+		case DbType.UInt32: return "uint?";
+		case DbType.UInt64: return "ulong?";
+		case DbType.VarNumeric: return "decimal";
+		default:
+		{
+			return "__UNKNOWN__" + column.NativeType;
+		}
+	}
+}
+
+///////////////////////////////////////////////////////////////
+// PROPERTY NAME by Shen Bo
+///////////////////////////////////////////////////////////////
+public string GetMemberVarName(ViewColumnSchema column)
+{
+	return MakeCamel(GetNameFromDBFieldName(column));
+}
+public string GetPropertyName(ViewColumnSchema column)
+{
+	return MakePascal(GetNameFromDBFieldName(column));
+}
+public string GetNameFromDBFieldName(ViewColumnSchema column)
+{
+	string name = column.Name;
+	if(name.StartsWith(GetDALClassName()))
+	{
+		name = name.Substring(GetDALClassName().Length);	
+	}
+	return name;
+}
+
+
+public string GetMemberVariableDefaultValue(ViewColumnSchema column)
+{
+	switch (column.DataType)
+	{
+		case DbType.Guid:
+		{
+			return "Guid.Empty";
+		}
+		case DbType.AnsiString:
+		case DbType.AnsiStringFixedLength:
+		case DbType.String:
+		case DbType.StringFixedLength:
+		{
+			return "String.Empty";
+		}
+		default:
+		{
+			return "";
+		}
+	}
+}
+
+
+public string GetReaderMethod(ViewColumnSchema column)
+{
+	switch (column.DataType)
+	{
+		case DbType.Byte:
+		{
+			return "GetByte";
+		}
+		case DbType.Int16:
+		{
+			return "GetInt16";
+		}
+		case DbType.Int32:
+		{
+			return "GetInt32";
+		}
+		case DbType.Int64:
+		{
+			return "GetInt64";
+		}
+		case DbType.AnsiStringFixedLength:
+		case DbType.AnsiString:
+		case DbType.String:
+		case DbType.StringFixedLength:
+		{
+			return "GetString";
+		}
+		case DbType.Boolean:
+		{
+			return "GetBoolean";
+		}
+		case DbType.Guid:
+		{
+			return "GetGuid";
+		}
+		case DbType.Currency:
+		case DbType.Decimal:
+		{
+			return "GetDecimal";
+		}
+		case DbType.DateTime:
+		case DbType.Date:
+		{
+			return "GetDateTime";
+		}
+		case DbType.Binary:
+		{
+			return "GetBytes";
+		}
+		default:
+		{
+			return "__SQL__" + column.DataType;
+		}
+	}
+}
+
+public string GetSqlDbType(ViewColumnSchema column)
+{
+	switch (column.NativeType)
+	{
+		case "bigint": return "BigInt";
+		case "binary": return "Binary";
+		case "bit": return "Bit";
+		case "char": return "Char";
+		case "datetime": return "DateTime";
+		case "decimal": return "Decimal";
+		case "float": return "Float";
+		case "image": return "Image";
+		case "int": return "Int";
+		case "money": return "Money";
+		case "nchar": return "NChar";
+		case "ntext": return "NText";
+		case "numeric": return "Decimal";
+		case "nvarchar": return "NVarChar";
+		case "real": return "Real";
+		case "smalldatetime": return "SmallDateTime";
+		case "smallint": return "SmallInt";
+		case "smallmoney": return "SmallMoney";
+		case "sql_variant": return "Variant";
+		case "sysname": return "NChar";
+		case "text": return "Text";
+		case "timestamp": return "Timestamp";
+		case "tinyint": return "TinyInt";
+		case "uniqueidentifier": return "UniqueIdentifier";
+		case "varbinary": return "VarBinary";
+		case "varchar": return "VarChar";
+		default: return "__UNKNOWN__" + column.NativeType;
+	}
+}
+
+//So dirty function! -- reviewed by shenbo
+public string MakeCamel(string value)
+{
+	return value.Substring(0, 1).ToUpper() + value.Substring(1);
+}
+
+//I will be dirty too! -- coded by shenbo
+public string MakePascal(string value)
+{
+	return value.Substring(0, 1).ToUpper() + value.Substring(1);
+}
+
+public string MakePlural(string name)
+{
+	Regex plural1 = new Regex("(?<keep>[^aeiou])y$");
+	Regex plural2 = new Regex("(?<keep>[aeiou]y)$");
+	Regex plural3 = new Regex("(?<keep>[sxzh])$");
+	Regex plural4 = new Regex("(?<keep>[^sxzhy])$");
+
+	if(plural1.IsMatch(name))
+		return plural1.Replace(name, "${keep}ies");
+	else if(plural2.IsMatch(name))
+		return plural2.Replace(name, "${keep}s");
+	else if(plural3.IsMatch(name))
+		return plural3.Replace(name, "${keep}es");
+	else if(plural4.IsMatch(name))
+		return plural4.Replace(name, "${keep}s");
+
+	return name;
+}
+
+public string MakeSingle(string name)
+{
+	Regex plural1 = new Regex("(?<keep>[^aeiou])ies$");
+	Regex plural2 = new Regex("(?<keep>[aeiou]y)s$");
+	Regex plural3 = new Regex("(?<keep>[sxzh])es$");
+	Regex plural4 = new Regex("(?<keep>[^sxzhyu])s$");
+
+	if(plural1.IsMatch(name))
+		return plural1.Replace(name, "${keep}y");
+	else if(plural2.IsMatch(name))
+		return plural2.Replace(name, "${keep}");
+	else if(plural3.IsMatch(name))
+		return plural3.Replace(name, "${keep}");
+	else if(plural4.IsMatch(name))
+		return plural4.Replace(name, "${keep}");
+
+	return name;
+}
+
+public override string GetFileName()
+{
+	return this.GetDALClassName() + ".cs";
+}
+
+public void PrintHeader()
+{
+	Response.WriteLine("//============================================================");
+	Response.WriteLine("// Producnt name:		 ");
+	Response.WriteLine("// Version: 			 ");
+	Response.WriteLine("// Coded by:			 ");
+	Response.WriteLine("// Auto generated at: 	 ");
+	Response.WriteLine("//============================================================");
+	Response.WriteLine();
+}
+
+public string GetCloumnName(string cloumn)
+{
+	return 	cloumn.Substring(0,1).ToUpper()+cloumn.Substring(1);
+} 
+</script>

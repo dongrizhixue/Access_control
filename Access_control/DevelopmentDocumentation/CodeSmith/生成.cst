@@ -1,0 +1,235 @@
+﻿  <%@ CodeTemplate Language="C#" TargetLanguage="C#" Src="" Inherits="" Debug="True" CompilerVersion="v3.5" ResponseEncoding="UTF-8" Description="输出所有模块文件" %>  
+  <%@ Property Name="ModelsNamespace" Default="company.Models" Type="System.String" Category="Context" Description="TargetTable that the object is based on." %>
+
+<%@ Property Name="Assembly" Type="System.String" Default="Assembly" Category="Object" Description="项目的程序集" %>    
+<%-- Context --%>  
+<%@ Assembly Name="System.Design" %>  
+<%@ Assembly Name="SchemaExplorer" %>  
+<%@ Import Namespace="SchemaExplorer" %>  
+<%@ Import Namespace="System.IO" %>  
+<%@ Import Namespace="System.Xml" %>  
+<%@ Import Namespace="System.Text" %>  
+<%@ Import Namespace="System.Windows.Forms.Design" %>  
+<%@ Import Namespace="System.Text.RegularExpressions" %>  
+<%@ Import Namespace="System.Collections.Specialized" %>  
+  
+<script runat="template">  
+  
+  
+    private DatabaseSchema _sourceDatabase;  
+    private string _outputDirectory;  
+    private bool _implementNotification = true;  
+      
+    //模板对象列表（根据模板名称产生出来的模板对象）  
+    public CodeTemplate[] CurrentTemplates;  
+    //模板名称数组  
+    public string[] TemplateNames = {"DAL.cst", "Entity.cst"};   
+    //模板输出格式数组  
+    public string[] strFormats = {"{0}.cs","{0}.cs"};  
+    //模板输出路径  
+    public string[] OutputPaths={ "\\DAL","\\Entity"};  
+    [Category("Database")]  
+    [Description("Database that the mapping file should be based on.")]  
+    public DatabaseSchema SourceDatabase {  
+        get { return _sourceDatabase; }  
+        set { _sourceDatabase = value; }  
+    }  
+  
+    [Editor(typeof(System.Windows.Forms.Design.FolderNameEditor), typeof(System.Drawing.Design.UITypeEditor))]  
+    [Category("Class")]  
+    [Description("The folder to save the generated class files.")]  
+    public string OutputDirectory  
+    {  
+        get {return _outputDirectory;}  
+        set {_outputDirectory= value;}  
+    }  
+  
+    //根据模板名称产生出来的模板对象列表  
+    public void CreateTemplate()  
+    {  
+        if (CurrentTemplates==null)  
+        {  
+            CurrentTemplates=new CodeTemplate[TemplateNames.Length];  
+            for (int i = 0; i < TemplateNames.Length; i++)  
+            {  
+                CurrentTemplates[i]=CompileTemplate(CodeTemplateInfo.DirectoryName + TemplateNames[i]);  
+            }  
+        }  
+    }  
+    //单独生成一个模板对象  
+    public CodeTemplate CompileTemplate(string templateName)  
+    {  
+        CodeTemplateCompiler compiler = new CodeTemplateCompiler(templateName);  
+        compiler.Compile();  
+  
+        if (compiler.Errors.Count == 0)  
+        {  
+            return compiler.CreateInstance();  
+        }  
+        else  
+        {  
+            for (int i = 0; i < compiler.Errors.Count; i++)  
+            {  
+                Response.WriteLine(compiler.Errors[i].ToString());  
+            }  
+            return null;  
+        }  
+  
+    }  
+  
+    //执行输出脚本  
+    public void Generate()  
+    {  
+        
+         
+        if (CurrentTemplates==null)  
+            CreateTemplate();  
+        StringCollection ExcludedTables=new StringCollection();  
+//        if (SourceTableNames.Length>0)  
+//        {  
+//            int mIndex=-1;  
+//            mIndex=SourceTableNames.IndexOf(',');  
+//            while (mIndex>0) {  
+//                ExcludedTables.Add(SourceTableNames.Substring(0,mIndex));  
+//                SourceTableNames=SourceTableNames.Remove(0,mIndex+1);  
+//                mIndex=SourceTableNames.IndexOf(',');  
+//            }  
+//            ExcludedTables.Add(SourceTableNames);  
+//        }      
+        foreach(TableSchema SourceTable in SourceDatabase.Tables)  
+        {  
+//            if (SourceTableNames.Length>0)  
+//            {  
+//                if (!ExcludedTables.Contains(SourceTable.Name))  
+//                    continue;  
+//            }  
+            Response.Write(string.Format("Processing Table {0} ... ", SourceTable.Name));  
+            Response.WriteLine();  
+            try  
+            {  
+            string className =  SourceTable.Name;  
+            for (int i = 0; i < TemplateNames.Length; i++)  
+                {  
+                string FileName;  
+                  
+                if (i==0)
+                    FileName=string.Format(strFormats[i],GetModelClassName(SourceTable)+"Service");  
+                else
+                    FileName=string.Format(strFormats[i],GetModelClassName(SourceTable));  
+//                {  
+//                    CurrentTemplates[i].SetProperty("SourceDatabase", SourceDatabase);  
+//                    FileName=strFormats[i];  
+//                }  
+               // else {  
+                    CurrentTemplates[i].SetProperty("SourceTable", SourceTable);  
+                    
+               // }  
+                FileName=Path.Combine(OutputDirectory+OutputPaths[i], FileName);  
+                //统一属性赋值  
+                CurrentTemplates[i].SetProperty("ModelsNamespace",ModelsNamespace);  
+                CurrentTemplates[i].SetProperty("TargetTable",SourceTable);   
+                  
+                Response.WriteLine(string.Format("{0} In {1} ", TemplateNames[i],FileName));  
+                CurrentTemplates[i].RenderToFile(FileName, true);  
+                }  
+            }  
+            catch (Exception ex)  
+            {  
+                Response.WriteLine("Error: " + ex);  
+            }  
+        }  
+    }  
+</script>  
+  
+<% this.Generate();  %>   
+<script runat="template">  
+private Regex cleanRegEx = new Regex(@"\s+|_|-|\.", RegexOptions.Compiled);  
+private Regex cleanID = new Regex(@"(_ID|_id|_Id|\.ID|\.id|\.Id|ID|Id)", RegexOptions.Compiled);  
+  
+//清除字符串中的分隔符以及第一个分隔符前的字符串长度小于等于prefixLength的前缀  
+public string ClearDivideMarkAndPrefix(string name,string mark,bool prefix,int prefixLength)  
+{  
+    string strResult=name;  
+    //处理表前缀  
+    if (prefix)  
+    {  
+        int mIndex=name.IndexOf(mark);  
+        if (mIndex<=prefixLength)  
+            strResult=name.Remove(0,mIndex+mark.Length);  
+    }  
+    if (mark.Length>0)  
+        strResult=GetFirstUpStr(strResult,mark);  
+    return strResult;  
+}  
+//受字母大写且mark分隔符后第一个字母大写  
+    public string GetFirstUpStr(string strValue,string mark)  
+    {  
+        string m_Str=strValue.ToLower();  
+        System.Text.StringBuilder mResult=new System.Text.StringBuilder("");  
+        int mLen=m_Str.Length;  
+        int j=-1;  
+        j=m_Str.IndexOf(mark);  
+        while (j>0)  
+        {  
+            mResult.Append(m_Str.Substring(0,1).ToUpper());  
+            mResult.Append(m_Str.Substring(1,j-1));  
+            m_Str=m_Str.Remove(0,j+mark.Length);  
+            j=m_Str.IndexOf(mark);  
+        }  
+        if (m_Str.Length>0)  
+        {  
+            mResult.Append(m_Str.Substring(0,1).ToUpper());  
+            mResult.Append(m_Str.Substring(1,m_Str.Length-1));  
+            }  
+        return mResult.ToString();  
+    }  
+    
+    public string GetModelClassName(TableSchema table)
+{
+	return MakePascal(table.Name);
+}
+
+
+public string MakePascal(string value)
+{
+	return value.Substring(0, 1).ToUpper() + value.Substring(1);
+}
+
+public string MakePlural(string name)
+{
+//	Regex plural1 = new Regex("(?<keep>[^aeiou])y$");
+//	Regex plural2 = new Regex("(?<keep>[aeiou]y)$");
+//	Regex plural3 = new Regex("(?<keep>[sxzh])$");
+//	Regex plural4 = new Regex("(?<keep>[^sxzhy])$");
+//
+//	if(plural1.IsMatch(name))
+//		return plural1.Replace(name, "${keep}ies");
+//	else if(plural2.IsMatch(name))
+//		return plural2.Replace(name, "${keep}s");
+//	else if(plural3.IsMatch(name))
+//		return plural3.Replace(name, "${keep}es");
+//	else if(plural4.IsMatch(name))
+//		return plural4.Replace(name, "${keep}s");
+
+	return name;
+}
+
+public string MakeSingle(string name)
+{
+//	Regex plural1 = new Regex("(?<keep>[^aeiou])ies$");
+//	Regex plural2 = new Regex("(?<keep>[aeiou]y)s$");
+//	Regex plural3 = new Regex("(?<keep>[sxzh])es$");
+//	Regex plural4 = new Regex("(?<keep>[^sxzhyu])s$");
+//
+//	if(plural1.IsMatch(name))
+//		return plural1.Replace(name, "${keep}y");
+//	else if(plural2.IsMatch(name))
+//		return plural2.Replace(name, "${keep}");
+//	else if(plural3.IsMatch(name))
+//		return plural3.Replace(name, "${keep}");
+//	else if(plural4.IsMatch(name))
+//		return plural4.Replace(name, "${keep}");
+
+	return name;
+}
+</script>  

@@ -1,0 +1,311 @@
+﻿<%@ CodeTemplate Language="C#" TargetLanguage="C#" Description="Generates a very simple business object." %>
+<%@ Property Name="TargetTable" Type="SchemaExplorer.ViewSchema" Category="Context" Description="TargetTable that the object is based on." %>
+<%@ Property Name="ModelsNamespace" Default="company.Models" Type="System.String" Category="Context" Description="TargetTable that the object is based on." %>
+<%@ Assembly Name="SchemaExplorer" %>
+<%@ Assembly Name="System.Data" %>
+<%@ Import Namespace="SchemaExplorer" %>
+<%@ Import Namespace="System.Data" %>
+<%@ Import Namespace="System.Text.RegularExpressions" %>
+<% PrintHeader(); %>
+using System;
+using System.Collections.Generic;
+using System.Text;
+
+namespace Entity
+{
+	/// <summary>
+    ///  <%= TargetTable.Description %>
+    /// </summary>
+	[Serializable()]
+	public partial class <%= GetModelClassName() %>
+	{ 
+		<% foreach (ViewColumnSchema column in TargetTable.Columns)  %>
+ 		<% { %>
+		
+		/// <summary>
+        ///  <%= GetPropertyName(column) %>
+        /// </summary>
+		public <%= GetPropertyType(column) %> <%= GetPropertyName(column) %>
+		{
+			 get;set;
+		}		
+		<% } %>	
+	}
+}
+<script runat="template">
+///////////////////////////////////////////////////////////////
+// CLASS NAME by Shen Bo
+///////////////////////////////////////////////////////////////
+public string GetTableMapping()
+{
+	string result;
+	result = string.Format("[DBTable(\"{0}\")]", TargetTable.Name);
+	return 	result;
+}
+public string GetModelClassName()
+{
+	return 	GetModelClassName(TargetTable);
+}
+public string GetModelClassName(ViewSchema table)
+{
+
+	return MakePascal(table.Name);
+}
+ 
+   
+
+
+///////////////////////////////////////////////////////////////
+// PROPERTY TYPE by Shen Bo
+///////////////////////////////////////////////////////////////
+public string GetPropertyType(ViewColumnSchema column)
+{
+	return GetCSharpTypeFromDBFieldType(column);
+}
+public string GetMemberVarType(ViewColumnSchema column)
+{
+	return GetPropertyType(column);
+}
+public string GetCSharpTypeFromDBFieldType(ViewColumnSchema column)
+{
+	if (column.Name.EndsWith("TypeCode")) return column.Name;
+	
+	switch (column.DataType)
+	{
+		case DbType.AnsiString: return "string";
+		case DbType.AnsiStringFixedLength: return "string";
+		case DbType.Binary: return "byte[]";
+		case DbType.Boolean: return "bool?";
+		case DbType.Byte: return "byte?"; 
+		case DbType.Currency: return "decimal?";
+		case DbType.Date: return "DateTime?";
+		case DbType.DateTime: return "DateTime?";
+		case DbType.Decimal: return "decimal?";
+		case DbType.Double: return "double?";
+		case DbType.Guid: return "Guid?";
+		case DbType.Int16: return "short?";
+		case DbType.Int32: return "int?";
+		case DbType.Int64: return "long?";
+		case DbType.Object: return "object";
+		case DbType.SByte: return "sbyte?";
+		case DbType.Single: return "float?";
+		case DbType.String: return "string";
+		case DbType.StringFixedLength: return "string";
+		case DbType.Time: return "TimeSpan";
+		case DbType.UInt16: return "ushort?";
+		case DbType.UInt32: return "uint?";
+		case DbType.UInt64: return "ulong?";
+		case DbType.VarNumeric: return "decimal";
+		default:
+		{
+			return "__UNKNOWN__" + column.NativeType;
+		}
+	}
+}
+
+///////////////////////////////////////////////////////////////
+// PROPERTY NAME by Shen Bo
+///////////////////////////////////////////////////////////////
+public string GetMemberVarName(ViewColumnSchema column)
+{
+	return MakeCamel(GetNameFromDBFieldName(column));
+}
+
+public string GetPropertyName(ViewColumnSchema column)
+{
+	return MakePascal(GetNameFromDBFieldName(column));
+}
+public string GetNameFromDBFieldName(ViewColumnSchema column)
+{
+	return column.Name;
+}
+
+///////////////////////////////////////////////////////////////
+// COLUMN MAPPING by Shen Bo
+///////////////////////////////////////////////////////////////
+public string GetFieldMapping(ViewColumnSchema column)
+{
+	string result;
+	result = string.Format("[DBField(\"{0}\")]", column.Name);
+	return 	result;
+}
+		
+public string GetMemberVariableDefaultValue(ViewColumnSchema column)
+{
+	switch (column.DataType)
+	{
+		case DbType.Guid:
+		{
+			return "Guid.Empty";
+		}
+		case DbType.AnsiString:
+		case DbType.AnsiStringFixedLength:
+		case DbType.String:
+		case DbType.StringFixedLength:
+		{
+			return "String.Empty";
+		}
+		default:
+		{
+			return "";
+		}
+	}
+}
+
+
+public string GetReaderMethod(ColumnSchema column)
+{
+	switch (column.DataType)
+	{
+		case DbType.Byte:
+		{
+			return "GetByte";
+		}
+		case DbType.Int16:
+		{
+			return "GetInt16";
+		}
+		case DbType.Int32:
+		{
+			return "GetInt32";
+		}
+		case DbType.Int64:
+		{
+			return "GetInt64";
+		}
+		case DbType.AnsiStringFixedLength:
+		case DbType.AnsiString:
+		case DbType.String:
+		case DbType.StringFixedLength:
+		{
+			return "GetString";
+		}
+		case DbType.Boolean:
+		{
+			return "GetBoolean";
+		}
+		case DbType.Guid:
+		{
+			return "GetGuid";
+		}
+		case DbType.Currency:
+		case DbType.Decimal:
+		{
+			return "GetDecimal";
+		}
+		case DbType.DateTime:
+		case DbType.Date:
+		{
+			return "GetDateTime";
+		}
+		case DbType.Binary:
+		{
+			return "GetBytes";
+		}
+		default:
+		{
+			return "__SQL__" + column.DataType;
+		}
+	}
+}
+
+public string GetSqlDbType(ColumnSchema column)
+{
+	switch (column.NativeType)
+	{
+		case "bigint": return "BigInt";
+		case "binary": return "Binary";
+		case "bit": return "Bit";
+		case "char": return "Char";
+		case "datetime": return "DateTime";
+		case "decimal": return "Decimal";
+		case "float": return "Float";
+		case "image": return "Image";
+		case "int": return "Int";
+		case "money": return "Money";
+		case "nchar": return "NChar";
+		case "ntext": return "NText";
+		case "numeric": return "Decimal";
+		case "nvarchar": return "NVarChar";
+		case "real": return "Real";
+		case "smalldatetime": return "SmallDateTime";
+		case "smallint": return "SmallInt";
+		case "smallmoney": return "SmallMoney";
+		case "sql_variant": return "Variant";
+		case "sysname": return "NChar";
+		case "text": return "Text";
+		case "timestamp": return "Timestamp";
+		case "tinyint": return "TinyInt";
+		case "uniqueidentifier": return "UniqueIdentifier";
+		case "varbinary": return "VarBinary";
+		case "varchar": return "VarChar";
+		default: return "__UNKNOWN__" + column.NativeType;
+	}
+}
+
+//So dirty function! -- reviewed by shenbo
+public string MakeCamel(string value)
+{
+	return value.Substring(0, 1).ToLower() + value.Substring(1);
+}
+
+//I will be dirty too! -- coded by shenbo
+public string MakePascal(string value)
+{
+	return value.Substring(0, 1).ToUpper() + value.Substring(1);
+}
+
+public string MakePlural(string name)
+{
+	Regex plural1 = new Regex("(?<keep>[^aeiou])y$");
+	Regex plural2 = new Regex("(?<keep>[aeiou]y)$");
+	Regex plural3 = new Regex("(?<keep>[sxzh])$");
+	Regex plural4 = new Regex("(?<keep>[^sxzhy])$");
+
+	if(plural1.IsMatch(name))
+		return plural1.Replace(name, "${keep}ies");
+	else if(plural2.IsMatch(name))
+		return plural2.Replace(name, "${keep}s");
+	else if(plural3.IsMatch(name))
+		return plural3.Replace(name, "${keep}es");
+	else if(plural4.IsMatch(name))
+		return plural4.Replace(name, "${keep}s");
+
+	return name;
+}
+
+public string MakeSingle(string name)
+{
+	Regex plural1 = new Regex("(?<keep>[^aeiou])ies$");
+	Regex plural2 = new Regex("(?<keep>[aeiou]y)s$");
+	Regex plural3 = new Regex("(?<keep>[sxzh])es$");
+	Regex plural4 = new Regex("(?<keep>[^sxzhyu])s$");
+
+	if(plural1.IsMatch(name))
+		return plural1.Replace(name, "${keep}y");
+	else if(plural2.IsMatch(name))
+		return plural2.Replace(name, "${keep}");
+	else if(plural3.IsMatch(name))
+		return plural3.Replace(name, "${keep}");
+	else if(plural4.IsMatch(name))
+		return plural4.Replace(name, "${keep}");
+
+	return name;
+}
+public override string GetFileName()
+{
+	return this.GetModelClassName(this.TargetTable) + ".cs";
+}
+
+public void PrintHeader()
+{
+	Response.WriteLine("//============================================================");
+	Response.WriteLine("// Producnt name:		AUTOCODING");
+	Response.WriteLine("// Version: 			1.0");
+	Response.WriteLine("// Coded by:	");		 
+	Response.WriteLine("// Auto generated at: 	{0}", DateTime.Now);
+	Response.WriteLine("//============================================================");
+	Response.WriteLine();
+}
+
+</script>

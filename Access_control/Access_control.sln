@@ -8,6 +8,9 @@ EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "DevelopmentDocumentation", "DevelopmentDocumentation", "{420BBC7A-5ECF-4367-9D06-3C77CD87D8DB}"
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "PDM", "PDM", "{F18F3054-A689-462B-AA4D-B43C74115080}"
+	ProjectSection(SolutionItems) = preProject
+		DevelopmentDocumentation\PDM\Access_control.pdm = DevelopmentDocumentation\PDM\Access_control.pdm
+	EndProjectSection
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "CodeSmith", "CodeSmith", "{E43CECFC-BA80-4F49-AFEE-777A470A27EC}"
 	ProjectSection(SolutionItems) = preProject
